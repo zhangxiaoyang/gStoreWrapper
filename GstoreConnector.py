@@ -1,17 +1,30 @@
 # coding: utf-8
-# zhangxiaoyang.hit#gmail._com
+# zhangxiaoyang.hit#gmail.com
+# github.com/zhangxiaoyang
 
 import socket
+import traceback
 
-class GStoreConnector:
+class GstoreConnector:
 
     def _connect(self):
-        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
-        self._sock.connect((self.ip, self.port))  
-        return True
+        try:
+            self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
+            self._sock.connect((self.ip, self.port))  
+            return True
+        except Exception, e:
+            print 'socket disconnection error. @GstoreConnector.disconnect'
+            traceback.print_exc()
+        return False
 
     def _disconnect(self):
-        self._sock.close()  
+        try:
+            self._sock.close()  
+            return True
+        except Exception, e:
+            print 'socket disconnection error. @GstoreConnector.disconnect'
+            traceback.print_exc()
+        return False
 
     def _send(self, msg):
         data = self._pack(msg)
@@ -107,14 +120,5 @@ class GStoreConnector:
         pass
 
     @_communicate
-    def insert(self, d, sparql):
-        pass
-
-    @_communicate
     def show(self):
         pass
-
-if __name__ == '__main__':
-    conn = GStoreConnector()
-    print conn.load('test')
-    print conn.query("select ?a where{?a <name> <wangxiaoming>}")
