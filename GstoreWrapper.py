@@ -25,7 +25,7 @@ class GstoreWrapper:
 
         self._db.disconnect()
 
-        self._gc.build(db_name, rdf_file_path)
+        return self._gc.build(db_name, rdf_file_path)
 
     def query(self, sparql):
         self._db = self._DB(self._db_name)
@@ -61,22 +61,38 @@ class GstoreWrapper:
             for i in index:
                 p = array[i][0]
                 certain_p = array[i][1][index[i]]
-                #TODO
-                certain_sparql = re.sub(r'%s(?!\w)' % p.replace('?', '\?'), certain_p, certain_sparql)
+                tmp = re.sub(r'%s(?!\w)' % p.replace('?', '\?'), certain_p, certain_sparql)
+                certain_sparql = re.sub(r' [^\?]\S*(?= .*?where\s?{)', '', tmp)
             
-            print certain_sparql
-            print '===='
+            result = self._gc.query(certain_sparql)
+            line_list = []
+            for line_index, line in enumerate(result.split('\n')[1:]):
+                if not line:
+                    continue
+
+                new_line = line
+                for i in index:
+                    if line_index == 0:
+                        p = array[i][0]
+                        new_line = '\t'.join([new_line, p])
+                    else:
+                        certain_p = array[i][1][index[i]]
+                        new_line = '\t'.join([new_line, certain_p])
+                line_list.append(new_line)
+            new_result = '\n'.join(line_list)
+            return new_result
+
             #change index
             #if index > counter then break
             break
 
         self._db.disconnect()
 
-        return self._gc.query(sparql)
+        return self._gc.query(certain_sparql)#TODO
  
     def load(self, db_name):
         self._db_name = db_name
-        self._gc.load(db_name)
+        return self._gc.load(db_name)
 
     def _get_possible_p(self, s, o):
         return self._db.select(s, o)
@@ -133,5 +149,11 @@ class SqliteDB:
 gw = GstoreWrapper(SqliteDB)
 #gw.build('test.db', os.path.abspath('test.n3'))
 gw.load('test.db')
+sparql = 'select ?s ?p ?o where {?s ?p ?o.}'
+print 'sparql:'
+print sparql
+print
+
 answer = gw.query('select ?s ?p ?o where {?s ?p ?o.}')
+print 'answer:'
 print answer
