@@ -95,7 +95,25 @@ class GstoreWrapper:
         return list(set(self._db.select(s, o)))
 
     def _merge_result(self, result_list):
-        return '\n'.join(result_list)#TODO
+        normal_header = None
+        records = [] 
+        for result in result_list:
+            if not result:
+                continue
+
+            header = filter(lambda x: x, result.split('\n')[0].split('\t'))
+            if not normal_header:
+                normal_header = header
+
+            items = [None for _ in normal_header]
+            for line in result.split('\n')[1:]:
+                for i, value in enumerate(line.split('\t')):
+                    items[normal_header.index(header[i])] = value
+            records.append(items)
+        return {
+            'keys': normal_header,
+            'records': records
+        }
 
     def __getattr__(self, func_name, *args, **kwargs):
         return getattr(self._gc, func_name)
@@ -178,6 +196,7 @@ class SqliteDB:
 if __name__ == '__main__':
     gw = GstoreWrapper(SqliteDB)
     gw.build('test.db', os.path.abspath('test.n3'))
-    sparql = 'select ?s1 ?p1 ?o1 ?s2 ?p2 ?o2 where {?s1 ?p1 ?o1. ?s2 ?p2 ?o2.}'
+    #sparql = 'select ?s1 ?p1 ?o1 ?s2 ?p2 ?o2 where {?s1 ?p1 ?o1. ?s2 ?p2 ?o2.}'
+    #sparql = 'select ?s ?o where {?s <name> ?o}'
     answer = gw.query(sparql)
     print answer
