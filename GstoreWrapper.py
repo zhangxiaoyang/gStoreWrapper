@@ -14,7 +14,8 @@ class GstoreWrapper:
         self._gc = GstoreConnector(*args, **kwargs)
 
     def build(self, db_name, rdf_file_path):
-        self._db = self._DB(db_name)
+        self._db_name = db_name
+        self._db = self._DB(self._db_name)
         self._db.connect()
         self._db.create(overwrite=True)
 
@@ -25,7 +26,7 @@ class GstoreWrapper:
 
         self._db.disconnect()
 
-        return self._gc.build(db_name, rdf_file_path)
+        return self._gc.build(self._db_name, rdf_file_path)
 
     def query(self, sparql):
         self._db = self._DB(self._db_name)
@@ -44,7 +45,7 @@ class GstoreWrapper:
                 one_spo = []
 
         array = []
-        counter = []
+        limit = []
         for s, p, o in spo_list:
             if p.startswith('?'):
                 p_list = self._get_possible_p(
@@ -52,11 +53,11 @@ class GstoreWrapper:
                     '*' if o.startswith('?') else o
                 )
                 array.append((p, p_list))
-                counter.append(len(p_list))
+                limit.append(len(p_list))
 
-        index = [0 for i in range(len(counter))]
-        #index_list = []
-        while True:
+        result_list = []
+        c = Counter(limit)
+        for index in c:
             certain_sparql = sparql
             for i in index:
                 p = array[i][0]
@@ -80,26 +81,54 @@ class GstoreWrapper:
                         new_line = '\t'.join([new_line, certain_p])
                 line_list.append(new_line)
             new_result = '\n'.join(line_list)
-            return new_result
-
-            #change index
-            #if index > counter then break
-            break
+            result_list.append(new_result)
 
         self._db.disconnect()
 
-        return self._gc.query(certain_sparql)#TODO
+        return self._merge_result(result_list)
  
     def load(self, db_name):
         self._db_name = db_name
-        return self._gc.load(db_name)
+        return self._gc.load(self._db_name)
 
     def _get_possible_p(self, s, o):
-        return self._db.select(s, o)
+        return list(set(self._db.select(s, o)))
+
+    def _merge_result(self, result_list):
+        return '\n'.join(result_list)#TODO
 
     def __getattr__(self, func_name, *args, **kwargs):
-        print func_name
         return getattr(self._gc, func_name)
+
+
+class Counter:
+
+    def __init__(self, limit):
+        self._limit = limit
+        self._value = [0 for i in self._limit]
+
+    def __iter__(self):
+        while True:
+            yield self._value
+            if not self._increment():
+                raise StopIteration
+
+    def _increment(self):
+        value_length = len(self._value)
+        carry = 1
+        for i in range(value_length):
+            v = self._value[value_length - i - 1]
+            max_v = self._limit[value_length - i - 1]
+            if v + carry >= max_v:
+                self._value[value_length - i - 1] = 0
+                carry = 1
+            else:
+                self._value[value_length - i - 1] += carry
+                return True
+
+        if carry:
+            return False
+        return True
 
 
 import sqlite3
@@ -146,14 +175,9 @@ class SqliteDB:
         cursor.close()
         return map(lambda x:x[0], values)
 
-gw = GstoreWrapper(SqliteDB)
-#gw.build('test.db', os.path.abspath('test.n3'))
-gw.load('test.db')
-sparql = 'select ?s ?p ?o where {?s ?p ?o.}'
-print 'sparql:'
-print sparql
-print
-
-answer = gw.query('select ?s ?p ?o where {?s ?p ?o.}')
-print 'answer:'
-print answer
+if __name__ == '__main__':
+    gw = GstoreWrapper(SqliteDB)
+    gw.build('test.db', os.path.abspath('test.n3'))
+    sparql = 'select ?s1 ?p1 ?o1 ?s2 ?p2 ?o2 where {?s1 ?p1 ?o1. ?s2 ?p2 ?o2.}'
+    answer = gw.query(sparql)
+    print answer
