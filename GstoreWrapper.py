@@ -21,8 +21,8 @@ class GstoreWrapper:
 
         with open(rdf_file_path, 'r') as f:
             for line in f:
-                s, p, o = re.split(r'\s*', line.strip('\t\r\n .'))
-                self._db.insert(s, p, o)
+                s, p, o = re.split(r'\t*', line.strip('\t\r\n .'))
+                self._db.insert(*map(lambda x:re.sub('["\']', ' ', x), (s, p, o)))
 
         self._db.disconnect()
 
@@ -197,6 +197,6 @@ if __name__ == '__main__':
     gw = GstoreWrapper(SqliteDB)
     gw.build('test.db', os.path.abspath('test.n3'))
     #sparql = 'select ?s1 ?p1 ?o1 ?s2 ?p2 ?o2 where {?s1 ?p1 ?o1. ?s2 ?p2 ?o2.}'
-    #sparql = 'select ?s ?o where {?s <name> ?o}'
+    sparql = 'select ?s ?o where {?s <name> ?o}'
     answer = gw.query(sparql)
     print answer
