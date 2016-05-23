@@ -21,8 +21,8 @@ class GstoreWrapper:
 
         with open(rdf_file_path, 'r') as f:
             for line in f:
-                s, p, o = re.split(r'\t*', line.strip('\t\r\n .'))
-                self._db.insert(*map(lambda x:re.sub('["\']', ' ', x), (s, p, o)))
+                s, p, o = re.split(r'\t*', re.sub(r'[\s\'\"]*', '', line).replace('><', '>\t<'))
+                self._db.insert(s, p, o)
 
         self._db.disconnect()
 
